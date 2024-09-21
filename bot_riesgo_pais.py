@@ -48,6 +48,12 @@ def obtener_riesgo_pais():
         return int(datos['ultimo'])  # Asegúrate de que 'ultimo' sea la clave correcta en la API
     return None
 
+def calcular_porcentaje_cambio(nuevo_valor, ultimo_valor):
+    """Calcula el porcentaje de cambio entre el nuevo valor y el último valor."""
+    if ultimo_valor is None or ultimo_valor == 0:
+        return 0
+    return ((nuevo_valor - ultimo_valor) / ultimo_valor) * 100
+
 def postear_tweet(nuevo_valor, ultimo_valor):
     """Postea un tweet indicando si el riesgo país subió o bajó."""
     tz = pytz.timezone('America/Argentina/Buenos_Aires')
