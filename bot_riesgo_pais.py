@@ -63,7 +63,8 @@ def postear_tweet(nuevo_valor, ultimo_valor):
         movimiento = "ℹ️ No tiene un valor previo registrado"
     
     tweet = (
-        f"{movimiento} y ahora es {nuevo_valor} puntos.\n\n"
+        f"{movimiento}\n"
+        f"Ahora es {nuevo_valor} puntos\n"
         f"🇦🇷 #RiesgoPaís #Argentina\n"
         f"🕒 Fecha y hora: {fecha_hora}"
     )
