@@ -24,10 +24,11 @@ headers = {
 # Función para obtener el último tweet del usuario
 def obtener_ultimo_tweet():
     user_id = client.get_me().data.id  # Obtener el ID del usuario actual
-    tweets = client.get_users_tweets(user_id, max_results=1)
-    
+    tweets = client.get_users_tweets(user_id, max_results=5)
+
+    # Trabaja solo con el primer tweet de la lista
     if tweets.data:
-        ultimo_tweet = tweets.data[0].text
+        ultimo_tweet = tweets.data[0].text  # Obtener el texto del último tweet
         # Intentar extraer el valor del riesgo país del último tweet
         try:
             ultimo_valor = int(ultimo_tweet.split("ahora es")[1].split("puntos")[0].strip())
