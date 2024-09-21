@@ -88,10 +88,10 @@ while True:
     
     if nuevo_valor is not None:
         ultimo_valor = leer_ultimo_valor_guardado()
-        if ultimo_valor is None or abs(nuevo_valor - ultimo_valor) >= 10:
+        if ultimo_valor is None or abs(nuevo_valor - ultimo_valor) != 0:
             postear_tweet(nuevo_valor, ultimo_valor)
         else:
-            print(f"El riesgo país cambió, pero no es significativo (menos de 10 puntos). Valor actual: {nuevo_valor}")
+            print(f"El riesgo país no cambió. Valor actual: {nuevo_valor}")
         
     # Esperar 5 minutos antes de la próxima verificación
     time.sleep(300)  # 5 minutos = 300 segundos
