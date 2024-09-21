@@ -64,7 +64,7 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     
     tweet = (
         f"{movimiento}\n"
-        f"Ahora es {nuevo_valor} puntos\n"
+        f"⚠️ Ahora es de {nuevo_valor} puntos\n"
         f"🇦🇷 #RiesgoPaís #Argentina\n"
         f"🕒 Fecha y hora: {fecha_hora}"
     )
