@@ -56,13 +56,17 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     if ultimo_valor is not None:
         diferencia = nuevo_valor - ultimo_valor
         if diferencia > 0:
-            movimiento = f"subió {diferencia}"
+            movimiento = f"😭 El riesgo país subió {diferencia} puntos ⬆️"
         else:
-            movimiento = f"bajó {abs(diferencia)}"
+            movimiento = f"💪 El riesgo país bajó {abs(diferencia)} puntos ⬇️"
     else:
-        movimiento = "no tiene un valor previo registrado"
+        movimiento = "ℹ️ No tiene un valor previo registrado"
     
-    tweet = f"El riesgo país de Argentina {movimiento} puntos y ahora es {nuevo_valor} puntos. #RiesgoPaís #Argentina\nFecha y hora: {fecha_hora}"
+    tweet = (
+        f"{movimiento} y ahora es {nuevo_valor} puntos.\n\n"
+        f"🇦🇷 #RiesgoPaís #Argentina\n"
+        f"🕒 Fecha y hora: {fecha_hora}"
+    )
     client.create_tweet(text=tweet)
     print(f"Tweet enviado: {tweet}")
 
