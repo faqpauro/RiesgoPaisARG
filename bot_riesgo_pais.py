@@ -2,14 +2,15 @@ import tweepy
 import requests
 import time
 from datetime import datetime
-import os
 import pytz
+import os
 
-BEARER_TOKEN = os.environ.get('BEARER_TOKEN')
-CONSUMER_KEY = os.environ.get('CONSUMER_KEY')
-CONSUMER_SECRET = os.environ.get('CONSUMER_SECRET')
-ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
-ACCESS_TOKEN_SECRET = os.environ.get('ACCESS_TOKEN_SECRET')
+# Credenciales OAuth 2.0
+BEARER_TOKEN = 'AAAAAAAAAAAAAAAAAAAAAMH5vwEAAAAAz0el8LALMoCz7myi%2BCt3l3iN4Dw%3DsGRWjv5zoJvFxwpEDKqcg411UGWWGJF5XV1SspRTvq61WzycQG'
+CONSUMER_KEY = 'RaMNwo5XQIvLsfHzOUr6Kz8Vl'
+CONSUMER_SECRET = '68DkzYuTa1aldWA2BhIAJy4UnZVhfw8EIGqDGOj6mJzFwVbCE7'
+ACCESS_TOKEN = '1576646313390768129-Qe0wSb6QtNJakhso3qDn42g7UawTfI'
+ACCESS_TOKEN_SECRET = 'fE3Kvi99NdzAeHitKmNy281HjdXten8i2KT0tqrO7OUQ4'
 
 # Inicializa el cliente de Tweepy con el Bearer Token
 client = tweepy.Client(BEARER_TOKEN, CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
@@ -21,24 +22,26 @@ headers = {
     "x-rapidapi-host": "riesgo-pais.p.rapidapi.com"
 }
 
-# Función para obtener el último tweet del usuario
-def obtener_ultimo_tweet():
-    user_id = client.get_me().data.id  # Obtener el ID del usuario actual
-    tweets = client.get_users_tweets(user_id, max_results=5)
+# Archivo donde se almacenará el valor del riesgo país
+ARCHIVO_RIESGO_PAIS = "riesgo_pais.txt"
 
-    # Trabaja solo con el primer tweet de la lista
-    if tweets.data:
-        ultimo_tweet = tweets.data[0].text  # Obtener el texto del último tweet
-        # Intentar extraer el valor del riesgo país del último tweet
-        try:
-            ultimo_valor = int(ultimo_tweet.split("ahora es")[1].split("puntos")[0].strip())
-            return ultimo_valor
-        except (IndexError, ValueError):
-            return None
+def leer_ultimo_valor_guardado():
+    """Leer el último valor del riesgo país guardado en un archivo."""
+    if os.path.exists(ARCHIVO_RIESGO_PAIS):
+        with open(ARCHIVO_RIESGO_PAIS, "r") as file:
+            try:
+                return int(file.read().strip())  # Leer y convertir el valor a entero
+            except ValueError:
+                return None
     return None
 
+def guardar_valor_riesgo_pais(valor):
+    """Guardar el valor actual del riesgo país en un archivo."""
+    with open(ARCHIVO_RIESGO_PAIS, "w") as file:
+        file.write(str(valor))  # Escribir el valor como cadena
+
 def obtener_riesgo_pais():
-    """Obtiene el valor del riesgo país de la API de RapidAPI"""
+    """Obtiene el valor del riesgo país de la API de RapidAPI."""
     response = requests.get(url_riesgo_pais, headers=headers)
     if response.status_code == 200:
         datos = response.json()
@@ -46,7 +49,7 @@ def obtener_riesgo_pais():
     return None
 
 def postear_tweet(nuevo_valor, ultimo_valor):
-    """Postea un tweet indicando si el riesgo país subió o bajó"""
+    """Postea un tweet indicando si el riesgo país subió o bajó."""
     tz = pytz.timezone('America/Argentina/Buenos_Aires')
     fecha_hora = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     
@@ -63,15 +66,19 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     client.create_tweet(text=tweet)
     print(f"Tweet enviado: {tweet}")
 
+    # Guardar el nuevo valor del riesgo país después de postear el tweet
+    guardar_valor_riesgo_pais(nuevo_valor)
+
+# Bucle principal
 while True:
     nuevo_valor = obtener_riesgo_pais()
     
     if nuevo_valor is not None:
-        ultimo_valor = obtener_ultimo_tweet()
+        ultimo_valor = leer_ultimo_valor_guardado()
         if ultimo_valor is None or abs(nuevo_valor - ultimo_valor) >= 10:
             postear_tweet(nuevo_valor, ultimo_valor)
         else:
             print(f"El riesgo país cambió, pero no es significativo (menos de 10 puntos). Valor actual: {nuevo_valor}")
         
     # Esperar 5 minutos antes de la próxima verificación
-    time.sleep(300)  # 5 minutos = 300 segundos
+    time.sleep(60)  # 5 minutos = 300 segundos
