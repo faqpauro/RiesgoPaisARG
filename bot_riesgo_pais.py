@@ -55,16 +55,18 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     
     if ultimo_valor is not None:
         diferencia = nuevo_valor - ultimo_valor
+        porcentaje_cambio = calcular_porcentaje_cambio(nuevo_valor, ultimo_valor)
         if diferencia > 0:
             movimiento = f"😭 El riesgo país subió {diferencia} puntos ⬆️"
         else:
             movimiento = f"💪 El riesgo país bajó {abs(diferencia)} puntos ⬇️"
     else:
         movimiento = "ℹ️ No tiene un valor previo registrado"
+        porcentaje_cambio = 0
     
     tweet = (
         f"{movimiento}\n"
-        f"⚠️ Ahora es de {nuevo_valor} puntos\n"
+        f"⚠️ Ahora es de {nuevo_valor} ({porcentaje_cambio:.2f}%)\n"
         f"🇦🇷 #RiesgoPaís #Argentina\n"
         f"🕒 {fecha_hora}"
     )
