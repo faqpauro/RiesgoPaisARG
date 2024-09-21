@@ -66,7 +66,7 @@ def postear_tweet(nuevo_valor, ultimo_valor):
         f"{movimiento}\n"
         f"⚠️ Ahora es de {nuevo_valor} puntos\n"
         f"🇦🇷 #RiesgoPaís #Argentina\n"
-        f"🕒 Fecha y hora: {fecha_hora}"
+        f"🕒 {fecha_hora}"
     )
     client.create_tweet(text=tweet)
     print(f"Tweet enviado: {tweet}")
