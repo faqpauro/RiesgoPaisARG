@@ -4,15 +4,15 @@ import time
 from datetime import datetime
 import os
 
-bearer_token = os.environ.get('BEARER_TOKEN')
-consumer_key = os.environ.get('CONSUMER_KEY')
-consumer_secret = os.environ.get('CONSUMER_SECRET')
-access_token = os.environ.get('ACCESS_TOKEN')
-access_token_secret = os.environ.get('ACCESS_TOKEN_SECRET')
+BEARER_TOKEN = os.environ.get('BEARER_TOKEN')
+CONSUMER_KEY = os.environ.get('CONSUMER_KEY')
+CONSUMER_SECRET = os.environ.get('CONSUMER_SECRET')
+ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
+ACCESS_TOKEN_SECRET = os.environ.get('ACCESS_TOKEN_SECRET')
 
 
 # Inicializa el cliente de Tweepy con el Bearer Token
-client = tweepy.Client(bearer_token, CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
+client = tweepy.Client(BEARER_TOKEN, CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
 
 # URL y cabeceras de la API de RapidAPI para riesgo país
 url_riesgo_pais = "https://riesgo-pais.p.rapidapi.com/api/riesgopais"
