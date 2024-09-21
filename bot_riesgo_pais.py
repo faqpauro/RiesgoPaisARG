@@ -3,6 +3,7 @@ import requests
 import time
 from datetime import datetime
 import os
+import pytz
 
 BEARER_TOKEN = os.environ.get('BEARER_TOKEN')
 CONSUMER_KEY = os.environ.get('CONSUMER_KEY')
@@ -35,7 +36,8 @@ def obtener_riesgo_pais():
 
 def postear_tweet(nuevo_valor):
     """Postea un tweet con el nuevo valor del riesgo país usando la API v2, incluyendo la fecha y hora"""
-    fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    tz = pytz.timezone('America/Argentina/Buenos_Aires')
+    fecha_hora = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
     tweet = f"El riesgo país de Argentina ha cambiado: {nuevo_valor} puntos. #RiesgoPaís #Argentina\nFecha y hora: {fecha_hora}"
     client.create_tweet(text=tweet)
     print(f"Tweet enviado: {tweet}")
