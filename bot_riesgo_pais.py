@@ -1,16 +1,18 @@
 import tweepy
 import requests
 import time
+from datetime import datetime
 import os
 
+bearer_token = os.environ.get('BEARER_TOKEN')
 consumer_key = os.environ.get('CONSUMER_KEY')
 consumer_secret = os.environ.get('CONSUMER_SECRET')
 access_token = os.environ.get('ACCESS_TOKEN')
 access_token_secret = os.environ.get('ACCESS_TOKEN_SECRET')
 
 
-auth = tweepy.OAuth1UserHandler(consumer_key, consumer_secret, access_token, access_token_secret)
-api = tweepy.API(auth)
+# Inicializa el cliente de Tweepy con el Bearer Token
+client = tweepy.Client(bearer_token, CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
 
 # URL y cabeceras de la API de RapidAPI para riesgo país
 url_riesgo_pais = "https://riesgo-pais.p.rapidapi.com/api/riesgopais"
@@ -19,7 +21,7 @@ headers = {
     "x-rapidapi-host": "riesgo-pais.p.rapidapi.com"
 }
 
-# Variable para almacenar el último valor del riesgo país y el último tweet publicado
+# Variables para almacenar el último valor del riesgo país y el último tweet publicado
 ultimo_valor = None
 ultimo_tweet_valor = None
 
@@ -32,9 +34,10 @@ def obtener_riesgo_pais():
     return None
 
 def postear_tweet(nuevo_valor):
-    """Postea un tweet con el nuevo valor del riesgo país"""
-    tweet = f"El riesgo país de Argentina ha cambiado: {nuevo_valor} puntos. #RiesgoPaís #Argentina"
-    api.update_status(tweet)
+    """Postea un tweet con el nuevo valor del riesgo país usando la API v2, incluyendo la fecha y hora"""
+    fecha_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    tweet = f"El riesgo país de Argentina ha cambiado: {nuevo_valor} puntos. #RiesgoPaís #Argentina\nFecha y hora: {fecha_hora}"
+    client.create_tweet(text=tweet)
     print(f"Tweet enviado: {tweet}")
 
 while True:
@@ -52,6 +55,4 @@ while True:
         ultimo_valor = nuevo_valor
 
     # Esperar 5 minutos antes de la próxima verificación
-    time.sleep(300)  # 5 minutos = 300 segundos
-
-
+    time.sleep(60)  # 5 minutos = 300 segundos
