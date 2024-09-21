@@ -81,4 +81,4 @@ while True:
             print(f"El riesgo país cambió, pero no es significativo (menos de 10 puntos). Valor actual: {nuevo_valor}")
         
     # Esperar 5 minutos antes de la próxima verificación
-    time.sleep(60)  # 5 minutos = 300 segundos
+    time.sleep(300)  # 5 minutos = 300 segundos
