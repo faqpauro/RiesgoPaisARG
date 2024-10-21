@@ -35,9 +35,32 @@ def leer_ultimo_valor_guardado():
                 return None
     return None
 
+def leer_valor_dia_anterior():
+    """Leer el valor del riesgo país guardado para el día anterior."""
+    archivo_dia_anterior = "riesgo_pais_dia_anterior.txt"
+    if os.path.exists(archivo_dia_anterior):
+        with open(archivo_dia_anterior, "r") as file:
+            try:
+                return int(file.read().strip())  # Leer y convertir el valor a entero
+            except ValueError:
+                return None
+    return None
+
 def guardar_valor_riesgo_pais(valor):
     """Guardar el valor actual del riesgo país en un archivo."""
     with open(ARCHIVO_RIESGO_PAIS, "w") as file:
+        file.write(str(valor))  # Escribir el valor como cadena
+
+def actualizar_valor_dia_anterior():
+    """Actualizar el valor del día anterior al final del día."""
+    valor_actual = leer_ultimo_valor_guardado()
+    if valor_actual is not None:
+        guardar_valor_dia_anterior(valor_actual)
+
+def guardar_valor_dia_anterior(valor):
+    """Guardar el valor del riesgo país para el día anterior."""
+    archivo_dia_anterior = "riesgo_pais_dia_anterior.txt"
+    with open(archivo_dia_anterior, "w") as file:
         file.write(str(valor))  # Escribir el valor como cadena
 
 def obtener_riesgo_pais():
@@ -54,6 +77,12 @@ def calcular_porcentaje_cambio(nuevo_valor, ultimo_valor):
         return 0
     return ((nuevo_valor - ultimo_valor) / ultimo_valor) * 100
 
+def calcular_porcentaje_cambio_diario(nuevo_valor, valor_dia_anterior):
+    """Calcula el porcentaje de cambio diario en base al valor del día anterior."""
+    if valor_dia_anterior is None or valor_dia_anterior == 0:
+        return 0
+    return ((nuevo_valor - valor_dia_anterior) / valor_dia_anterior) * 100
+
 def postear_tweet(nuevo_valor, ultimo_valor):
     """Postea un tweet indicando si el riesgo país subió o bajó."""
     tz = pytz.timezone('America/Argentina/Buenos_Aires')
@@ -61,7 +90,9 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     
     if ultimo_valor is not None:
         diferencia = nuevo_valor - ultimo_valor
-        porcentaje_cambio = calcular_porcentaje_cambio(nuevo_valor, ultimo_valor)
+        # Calcular porcentaje respecto al valor del día anterior
+        valor_dia_anterior = leer_valor_dia_anterior()
+        porcentaje_cambio_diario = calcular_porcentaje_cambio_diario(nuevo_valor, valor_dia_anterior)
         # Determinar si usar "punto" o "puntos"
         puntos_texto = "punto" if abs(diferencia) == 1 else "puntos"
         if diferencia > 0:
@@ -74,7 +105,7 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     
     tweet = (
         f"{movimiento}\n"
-        f"⚠️ Ahora es de {nuevo_valor} ({porcentaje_cambio:.2f}%)\n"
+        f"⚠️ Ahora es de {nuevo_valor} ({porcentaje_cambio_diario:.2f}%)\n"
         f"🇦🇷 #RiesgoPaís #Argentina\n"
         f"🕒 {fecha_hora}"
     )
@@ -83,6 +114,9 @@ def postear_tweet(nuevo_valor, ultimo_valor):
 
     # Guardar el nuevo valor del riesgo país después de postear el tweet
     guardar_valor_riesgo_pais(nuevo_valor)
+
+# Bucle principal
+actualizado_hoy = False
 
 # Bucle principal
 while True:
@@ -94,6 +128,17 @@ while True:
             postear_tweet(nuevo_valor, ultimo_valor)
         else:
             print(f"El riesgo país no cambió. Valor actual: {nuevo_valor}")
+        
+    # Verificar si la hora está entre 23:50 y 23:55 para actualizar el valor del día anterior
+    hora_actual = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires')).time()
+    if hora_actual.hour == 23 and 50 <= hora_actual.minute <= 55 and not actualizado_hoy:
+        actualizar_valor_dia_anterior()
+        actualizado_hoy = True
+        print("Valor del día anterior actualizado.")
+    
+    # Resetear el indicador al inicio de un nuevo día
+    if hora_actual.hour == 0:
+        actualizado_hoy = False
         
     # Esperar 5 minutos antes de la próxima verificación
     time.sleep(300)  # 5 minutos = 300 segundos
