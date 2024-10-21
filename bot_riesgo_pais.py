@@ -62,10 +62,12 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     if ultimo_valor is not None:
         diferencia = nuevo_valor - ultimo_valor
         porcentaje_cambio = calcular_porcentaje_cambio(nuevo_valor, ultimo_valor)
+        # Determinar si usar "punto" o "puntos"
+        puntos_texto = "punto" if abs(diferencia) == 1 else "puntos"
         if diferencia > 0:
-            movimiento = f"😭 El riesgo país subió {diferencia} puntos ⬆️"
+            movimiento = f"😭 El riesgo país subió {diferencia} {puntos_texto} ⬆️"
         else:
-            movimiento = f"💪 El riesgo país bajó {abs(diferencia)} puntos ⬇️"
+            movimiento = f"💪 El riesgo país bajó {abs(diferencia)} {puntos_texto} ⬇️"
     else:
         movimiento = "ℹ️ No tiene un valor previo registrado"
         porcentaje_cambio = 0
