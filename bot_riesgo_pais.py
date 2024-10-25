@@ -22,8 +22,9 @@ headers = {
     "x-rapidapi-host": "riesgo-pais.p.rapidapi.com"
 }
 
-# Archivo donde se almacenará el valor del riesgo país
+# Archivos donde se almacenan los valores del riesgo país
 ARCHIVO_RIESGO_PAIS = "riesgo_pais.txt"
+ARCHIVO_RIESGO_PAIS_ANTERIOR = "riesgo_pais_dia_anterior.txt"
 
 def leer_ultimo_valor_guardado():
     """Leer el último valor del riesgo país guardado en un archivo."""
@@ -37,9 +38,8 @@ def leer_ultimo_valor_guardado():
 
 def leer_valor_dia_anterior():
     """Leer el valor del riesgo país guardado para el día anterior."""
-    archivo_dia_anterior = "riesgo_pais_dia_anterior.txt"
-    if os.path.exists(archivo_dia_anterior):
-        with open(archivo_dia_anterior, "r") as file:
+    if os.path.exists(ARCHIVO_RIESGO_PAIS_ANTERIOR):
+        with open(ARCHIVO_RIESGO_PAIS_ANTERIOR, "r") as file:
             try:
                 return int(file.read().strip())  # Leer y convertir el valor a entero
             except ValueError:
@@ -59,8 +59,7 @@ def actualizar_valor_dia_anterior():
 
 def guardar_valor_dia_anterior(valor):
     """Guardar el valor del riesgo país para el día anterior."""
-    archivo_dia_anterior = "riesgo_pais_dia_anterior.txt"
-    with open(archivo_dia_anterior, "w") as file:
+    with open(ARCHIVO_RIESGO_PAIS_ANTERIOR, "w") as file:
         file.write(str(valor))  # Escribir el valor como cadena
 
 def obtener_riesgo_pais():
@@ -101,7 +100,7 @@ def postear_tweet(nuevo_valor, ultimo_valor):
             movimiento = f"💪 El riesgo país bajó {abs(diferencia)} {puntos_texto} ⬇️"
     else:
         movimiento = "ℹ️ No tiene un valor previo registrado"
-        porcentaje_cambio = 0
+        porcentaje_cambio_diario = 0  # Para evitar errores si no hay valor previo
     
     tweet = (
         f"{movimiento}\n"
@@ -115,8 +114,35 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     # Guardar el nuevo valor del riesgo país después de postear el tweet
     guardar_valor_riesgo_pais(nuevo_valor)
 
+def postear_resumen_diario():
+    """Postea un tweet con el resumen diario del cambio del riesgo país."""
+    valor_actual = leer_ultimo_valor_guardado()
+    valor_dia_anterior = leer_valor_dia_anterior()
+    if valor_actual is not None and valor_dia_anterior is not None:
+        diferencia = valor_actual - valor_dia_anterior
+        puntos_texto = "punto" if abs(diferencia) == 1 else "puntos"
+        porcentaje_cambio_diario = calcular_porcentaje_cambio_diario(valor_actual, valor_dia_anterior)
+        if diferencia > 0:
+            movimiento = f"😭 El riesgo país subió {diferencia} {puntos_texto} hoy. ⬆️"
+        elif diferencia < 0:
+            movimiento = f"💪 El riesgo país bajó {abs(diferencia)} {puntos_texto} hoy. ⬇️"
+        else:
+            movimiento = "ℹ️ El riesgo país no cambió hoy."
+        
+        fecha_actual = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires')).strftime('%d/%m')
+        tweet = (
+            f"🔔 RESUMEN DEL DÍA {fecha_actual} 🔔\n"
+            f"\n"
+            f"{movimiento}\n"
+            f"📊 Variación porcentual del día: {porcentaje_cambio_diario:.2f}%\n"
+            f"🇦🇷 #RiesgoPaís #Argentina"
+        )
+        client.create_tweet(text=tweet)
+        print(f"Tweet resumen diario enviado: {tweet}")
+
 # Bucle principal
 actualizado_hoy = False
+resumen_diario_posteado = False
 
 # Bucle principal
 while True:
@@ -134,11 +160,18 @@ while True:
     if hora_actual.hour == 23 and 50 <= hora_actual.minute <= 55 and not actualizado_hoy:
         actualizar_valor_dia_anterior()
         actualizado_hoy = True
+        resumen_diario_posteado = False  # Permitir que se postee el resumen al día siguiente
         print("Valor del día anterior actualizado.")
+
+    # Postear el resumen diario a las 22:00
+    if hora_actual.hour == 22 and hora_actual.weekday() < 5 and not resumen_diario_posteado:
+        postear_resumen_diario()
+        resumen_diario_posteado = True
     
     # Resetear el indicador al inicio de un nuevo día
     if hora_actual.hour == 0:
         actualizado_hoy = False
+        resumen_diario_posteado = False
         
     # Esperar 5 minutos antes de la próxima verificación
     time.sleep(300)  # 5 minutos = 300 segundos
