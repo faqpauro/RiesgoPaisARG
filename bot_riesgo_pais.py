@@ -25,6 +25,7 @@ headers = {
 # Archivos donde se almacenan los valores del riesgo país
 ARCHIVO_RIESGO_PAIS = "riesgo_pais.txt"
 ARCHIVO_RIESGO_PAIS_ANTERIOR = "riesgo_pais_dia_anterior.txt"
+ARCHIVO_HISTORICO_RIESGO_PAIS = "historico_riesgo_pais.txt"
 
 def leer_ultimo_valor_guardado():
     """Leer el último valor del riesgo país guardado en un archivo."""
@@ -45,6 +46,19 @@ def leer_valor_dia_anterior():
             except ValueError:
                 return None
     return None
+
+def leer_historico_riesgo_pais():
+    """Leer el histórico del riesgo país desde un archivo."""
+    historico = []
+    if os.path.exists(ARCHIVO_HISTORICO_RIESGO_PAIS):
+        with open(ARCHIVO_HISTORICO_RIESGO_PAIS, "r") as file:
+            for linea in file:
+                try:
+                    fecha, valor = linea.strip().split('\t')
+                    historico.append((datetime.strptime(fecha, '%d-%m-%Y'), float(valor.replace(',', '.'))))
+                except ValueError:
+                    continue
+    return historico
 
 def guardar_valor_riesgo_pais(valor):
     """Guardar el valor actual del riesgo país en un archivo."""
@@ -82,6 +96,17 @@ def calcular_porcentaje_cambio_diario(nuevo_valor, valor_dia_anterior):
         return 0
     return ((nuevo_valor - valor_dia_anterior) / valor_dia_anterior) * 100
 
+def obtener_mejor_valor_desde_fecha(valor_actual, historico):
+    """Determina la fecha más reciente con un valor inferior al valor actual."""
+    mejor_fecha = None
+    mejor_valor = None
+    for fecha, valor in sorted(historico, key=lambda x: x[0], reverse=True):
+        if valor < valor_actual:
+            mejor_fecha = fecha
+            mejor_valor = valor
+            break
+    return mejor_fecha, mejor_valor
+
 def postear_tweet(nuevo_valor, ultimo_valor):
     """Postea un tweet indicando si el riesgo país subió o bajó."""
     tz = pytz.timezone('America/Argentina/Buenos_Aires')
@@ -118,14 +143,15 @@ def postear_resumen_diario():
     """Postea un tweet con el resumen diario del cambio del riesgo país."""
     valor_actual = leer_ultimo_valor_guardado()
     valor_dia_anterior = leer_valor_dia_anterior()
+    historico = leer_historico_riesgo_pais()
     if valor_actual is not None and valor_dia_anterior is not None:
         diferencia = valor_actual - valor_dia_anterior
         puntos_texto = "punto" if abs(diferencia) == 1 else "puntos"
         porcentaje_cambio_diario = calcular_porcentaje_cambio_diario(valor_actual, valor_dia_anterior)
         if diferencia > 0:
-            movimiento = f"😭 El riesgo país subió {diferencia} {puntos_texto} hoy. ⬆️"
+            movimiento = f"😭 Subió {diferencia} {puntos_texto} hoy. ⬆️"
         elif diferencia < 0:
-            movimiento = f"💪 El riesgo país bajó {abs(diferencia)} {puntos_texto} hoy. ⬇️"
+            movimiento = f"💪 Bajó {abs(diferencia)} {puntos_texto} hoy. ⬇️"
         else:
             movimiento = "ℹ️ El riesgo país no cambió hoy."
         
@@ -133,10 +159,17 @@ def postear_resumen_diario():
         tweet = (
             f"🔔 RESUMEN DEL DÍA {fecha_actual} 🔔\n"
             f"\n"
+            f"📉 Riesgo País: {valor_actual}\n"
             f"{movimiento}\n"
-            f"📊 Variación porcentual del día: {porcentaje_cambio_diario:.2f}%\n"
-            f"🇦🇷 #RiesgoPaís #Argentina"
+            f"📊 Variación porcentual: {porcentaje_cambio_diario:.2f}%\n"
         )
+
+        mejor_fecha, mejor_valor = obtener_mejor_valor_desde_fecha(valor_actual, historico)
+        if mejor_fecha:
+            mejor_fecha_str = mejor_fecha.strftime('%d/%m/%Y')
+            tweet += f"🏆 Mejor desde {mejor_fecha_str} ({mejor_valor:.0f})"
+        
+        tweet += f"🇦🇷 #RiesgoPaís #Argentina"
         client.create_tweet(text=tweet)
         print(f"Tweet resumen diario enviado: {tweet}")
 
@@ -144,7 +177,6 @@ def postear_resumen_diario():
 actualizado_hoy = False
 resumen_diario_posteado = False
 
-# Bucle principal
 while True:
     nuevo_valor = obtener_riesgo_pais()
     
