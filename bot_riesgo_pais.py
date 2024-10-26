@@ -167,7 +167,7 @@ def postear_resumen_diario():
         mejor_fecha, mejor_valor = obtener_mejor_valor_desde_fecha(valor_actual, historico)
         if mejor_fecha:
             mejor_fecha_str = mejor_fecha.strftime('%d/%m/%Y')
-            tweet += f"🏆 Mejor desde {mejor_fecha_str} ({mejor_valor:.0f})"
+            tweet += f"🏆 Mejor desde {mejor_fecha_str} ({mejor_valor:.0f})\n"
         
         tweet += f"🇦🇷 #RiesgoPaís #Argentina"
         client.create_tweet(text=tweet)
