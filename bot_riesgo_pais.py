@@ -196,7 +196,8 @@ while True:
         print("Valor del día anterior actualizado.")
 
     # Postear el resumen diario a las 22:00
-    if hora_actual.hour == 22 and hora_actual.weekday() < 5 and not resumen_diario_posteado:
+    dia_actual = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires'))
+    if hora_actual.hour == 22 and dia_actual.weekday() < 5 and not resumen_diario_posteado:
         postear_resumen_diario()
         resumen_diario_posteado = True
     
