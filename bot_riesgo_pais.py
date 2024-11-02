@@ -3,7 +3,31 @@ import requests
 import time
 from datetime import datetime
 import pytz
+import firebase_admin
+from firebase_admin import credentials, firestore
 import os
+
+# Definir las credenciales usando las variables de entorno
+firebase_cred = {
+    "type": os.environ.get('FIREBASE_TYPE'),
+    "project_id": os.environ.get('FIREBASE_PROJECT_ID'),
+    "private_key_id": os.environ.get('FIREBASE_PRIVATE_KEY_ID'),
+    "private_key": os.environ.get('FIREBASE_PRIVATE_KEY').replace("\\n", "\n"),
+    "client_email": os.environ.get('FIREBASE_CLIENT_EMAIL'),
+    "client_id": os.environ.get('FIREBASE_CLIENT_ID'),
+    "auth_uri": os.environ.get('FIREBASE_AUTH_URI'),
+    "token_uri": os.environ.get('FIREBASE_TOKEN_URI'),
+    "auth_provider_x509_cert_url": os.environ.get('FIREBASE_AUTH_PROVIDER_X509_CERT_URL'),
+    "client_x509_cert_url": os.environ.get('FIREBASE_CLIENT_X509_CERT_URL'),
+    "universe_domain": os.environ.get('FIREBASE_UNIVERSE_DOMAIN')
+}
+
+# Inicializa Firebase con las credenciales del diccionario
+cred = credentials.Certificate(firebase_cred)
+firebase_admin.initialize_app(cred)
+
+# Inicializa el cliente de Firestore
+db = firestore.client()
 
 # Credenciales OAuth 2.0
 BEARER_TOKEN = os.environ.get('BEARER_TOKEN')
@@ -22,48 +46,33 @@ headers = {
     "x-rapidapi-host": "riesgo-pais.p.rapidapi.com"
 }
 
-# Archivos donde se almacenan los valores del riesgo país
-ARCHIVO_RIESGO_PAIS = "riesgo_pais.txt"
-ARCHIVO_RIESGO_PAIS_ANTERIOR = "riesgo_pais_dia_anterior.txt"
-ARCHIVO_HISTORICO_RIESGO_PAIS = "historico_riesgo_pais.txt"
-
 def leer_ultimo_valor_guardado():
-    """Leer el último valor del riesgo país guardado en un archivo."""
-    if os.path.exists(ARCHIVO_RIESGO_PAIS):
-        with open(ARCHIVO_RIESGO_PAIS, "r") as file:
-            try:
-                return int(file.read().strip())  # Leer y convertir el valor a entero
-            except ValueError:
-                return None
+    doc_ref = db.collection('riesgo_pais').document('ultimo_valor')
+    doc = doc_ref.get()
+    if doc.exists:
+        return doc.to_dict().get('valor')
     return None
 
 def leer_valor_dia_anterior():
-    """Leer el valor del riesgo país guardado para el día anterior."""
-    if os.path.exists(ARCHIVO_RIESGO_PAIS_ANTERIOR):
-        with open(ARCHIVO_RIESGO_PAIS_ANTERIOR, "r") as file:
-            try:
-                return int(file.read().strip())  # Leer y convertir el valor a entero
-            except ValueError:
-                return None
+    doc_ref = db.collection('riesgo_pais').document('valor_dia_anterior')
+    doc = doc_ref.get()
+    if doc.exists:
+        return doc.to_dict().get('valor')
     return None
 
 def leer_historico_riesgo_pais():
-    """Leer el histórico del riesgo país desde un archivo."""
     historico = []
-    if os.path.exists(ARCHIVO_HISTORICO_RIESGO_PAIS):
-        with open(ARCHIVO_HISTORICO_RIESGO_PAIS, "r") as file:
-            for linea in file:
-                try:
-                    fecha, valor = linea.strip().split('\t')
-                    historico.append((datetime.strptime(fecha, '%d-%m-%Y'), float(valor.replace(',', '.'))))
-                except ValueError:
-                    continue
+    docs = db.collection('historico_riesgo_pais').stream()
+    for doc in docs:
+        data = doc.to_dict()
+        fecha = data.get('fecha')
+        valor = data.get('valor')
+        historico.append((datetime.strptime(fecha, '%d/%m/%Y'), valor))
     return historico
 
 def guardar_valor_riesgo_pais(valor):
-    """Guardar el valor actual del riesgo país en un archivo."""
-    with open(ARCHIVO_RIESGO_PAIS, "w") as file:
-        file.write(str(valor))  # Escribir el valor como cadena
+    doc_ref = db.collection('riesgo_pais').document('ultimo_valor')
+    doc_ref.set({'valor': valor})
 
 def actualizar_valor_dia_anterior():
     """Actualizar el valor del día anterior al final del día."""
@@ -72,9 +81,20 @@ def actualizar_valor_dia_anterior():
         guardar_valor_dia_anterior(valor_actual)
 
 def guardar_valor_dia_anterior(valor):
-    """Guardar el valor del riesgo país para el día anterior."""
-    with open(ARCHIVO_RIESGO_PAIS_ANTERIOR, "w") as file:
-        file.write(str(valor))  # Escribir el valor como cadena
+    doc_ref = db.collection('riesgo_pais').document('valor_dia_anterior')
+    doc_ref.set({'valor': valor})
+
+def guardar_historico_riesgo_pais(valor):
+    """Guarda el valor del riesgo país para la fecha actual en Firestore."""
+    # Obtener la fecha actual en el formato requerido
+    fecha_actual = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires')).strftime('%d/%m/%Y')
+    
+    # Referencia al documento usando la fecha como ID
+    doc_ref = db.collection('historico_riesgo_pais').document(fecha_actual)
+    
+    # Escritura del valor sin verificar si ya existe (asumimos que se ejecuta solo una vez al día)
+    doc_ref.set({'fecha': fecha_actual, 'valor': valor})
+    print(f"Valor del riesgo país guardado para la fecha {fecha_actual}: {valor}")
 
 def obtener_riesgo_pais():
     """Obtiene el valor del riesgo país de la API de RapidAPI."""
@@ -191,9 +211,10 @@ while True:
     hora_actual = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires')).time()
     if hora_actual.hour == 23 and 50 <= hora_actual.minute <= 55 and not actualizado_hoy:
         actualizar_valor_dia_anterior()
+        guardar_historico_riesgo_pais(nuevo_valor)
         actualizado_hoy = True
         resumen_diario_posteado = False  # Permitir que se postee el resumen al día siguiente
-        print("Valor del día anterior actualizado.")
+        print("Valor del día anterior actualizado y Valor historico agregado.")
 
     # Postear el resumen diario a las 22:00
     dia_actual = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires'))
