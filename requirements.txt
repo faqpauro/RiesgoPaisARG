@@ -1,3 +1,5 @@
 tweepy
 requests
+firebase-admin
 pytz
+matplotlib
