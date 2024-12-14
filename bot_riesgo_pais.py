@@ -184,15 +184,15 @@ def generar_grafico_en_memoria(datos):
         2012: "Cristina Fernández",
         2013: "Cristina Fernández",
         2014: "Cristina Fernández",
-        2015: "Cristina Fernández",
+        2015: "Mauricio Macri",
         2016: "Mauricio Macri",
         2017: "Mauricio Macri",
         2018: "Mauricio Macri",
-        2019: "Mauricio Macri",
+        2019: "Alberto Fernández",
         2020: "Alberto Fernández",
         2021: "Alberto Fernández",
         2022: "Alberto Fernández",
-        2023: "Alberto Fernández",
+        2023: "Javier Milei",
         2024: "Javier Milei",
         2025: "Javier Milei",
         2026: "Javier Milei",
@@ -566,9 +566,11 @@ while True:
     if dia_actual < 5 and (hora_actual >= datetime.strptime("08:00", "%H:%M").time() or hora_actual <= datetime.strptime("01:00", "%H:%M").time()):
         nuevo_valor = obtener_riesgo_pais()
         
-        if nuevo_valor is not None:
+        if nuevo_valor is not None and nuevo_valor != 0:
             ultimo_valor = leer_ultimo_valor_guardado()
-            if ultimo_valor is None or abs(nuevo_valor - ultimo_valor) != 0:
+            if ultimo_valor is None or (abs(nuevo_valor - ultimo_valor) > 300):
+                print(f"La diferencia entre los valores es demasiado grande ({abs(nuevo_valor - ultimo_valor)} puntos). No se publicará el tweet.")
+            elif abs(nuevo_valor - ultimo_valor) != 0:
                 postear_tweet(nuevo_valor, ultimo_valor)
             else:
                 print(f"El riesgo país no cambió. Valor actual: {nuevo_valor}")
