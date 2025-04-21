@@ -556,11 +556,6 @@ while True:
     # Resetear indicador al inicio de un nuevo mes
     if ahora.day == 1 and hora_actual.hour == 0:
         resumen_mensual_posteado = False
-    
-    # Publicar gráfico los Domingos a las 19:30
-    if dia_actual == 6 and hora_actual.hour == 19 and 30 <= hora_actual.minute <= 35 and not grafico_posteado:
-        postear_grafico()
-        grafico_posteado = True
         
     # Verificar si está dentro del horario permitido
     if dia_actual < 5 and (hora_actual >= datetime.strptime("08:00", "%H:%M").time() or hora_actual <= datetime.strptime("01:00", "%H:%M").time()):
