@@ -48,7 +48,7 @@ auth = tweepy.OAuth1UserHandler(CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACC
 api = tweepy.API(auth)
 
 # URL y cabeceras de la API de RapidAPI para riesgo país
-url_riesgo_pais = "https://api.argentinadatos.com/v1/finanzas/indices/país/ultimo"
+url_riesgo_pais = "https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo"
 
 def leer_ultimo_valor_guardado():
     doc_ref = db.collection('riesgo_pais').document('ultimo_valor')
