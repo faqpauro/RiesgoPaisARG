@@ -48,11 +48,7 @@ auth = tweepy.OAuth1UserHandler(CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACC
 api = tweepy.API(auth)
 
 # URL y cabeceras de la API de RapidAPI para riesgo país
-url_riesgo_pais = "https://riesgo-pais.p.rapidapi.com/api/riesgopais"
-headers = {
-    "x-rapidapi-key": "a2df4bf8demsh97afe8342a3d223p118bd5jsn7414c6a2d7b7",
-    "x-rapidapi-host": "riesgo-pais.p.rapidapi.com"
-}
+url_riesgo_pais = "https://api.argentinadatos.com/v1/finanzas/indices/país/ultimo"
 
 def leer_ultimo_valor_guardado():
     doc_ref = db.collection('riesgo_pais').document('ultimo_valor')
@@ -120,10 +116,10 @@ def guardar_historico_riesgo_pais(valor):
 
 def obtener_riesgo_pais():
     """Obtiene el valor del riesgo país de la API de RapidAPI."""
-    response = requests.get(url_riesgo_pais, headers=headers)
+    response = requests.get(url_riesgo_pais)
     if response.status_code == 200:
         datos = response.json()
-        return int(datos['ultimo'])
+        return int(datos['valor'])
     return None
 
 def calcular_porcentaje_cambio(nuevo_valor, ultimo_valor):
