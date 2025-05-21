@@ -11,6 +11,7 @@ from io import BytesIO
 from datetime import datetime, timedelta
 import math
 import random
+from playwright.sync_api import sync_playwright
 
 # Definir las credenciales usando las variables de entorno
 firebase_cred = {
@@ -115,12 +116,15 @@ def guardar_historico_riesgo_pais(valor):
     print(f"Valor del riesgo país guardado para la fecha {fecha_actual}: {valor}")
 
 def obtener_riesgo_pais():
-    """Obtiene el valor del riesgo país de la API de RapidAPI."""
-    response = requests.get(url_riesgo_pais)
-    if response.status_code == 200:
-        datos = response.json()
-        return int(datos['valor'])
-    return None
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(ignore_https_errors=True)
+        page = context.new_page()
+        page.goto("https://www.ambito.com/contenidos/RIESGO-PAIS.html", wait_until="networkidle")
+        page.wait_for_selector("span.variation-last__value.data-ultimo")
+        valor = page.query_selector("span.variation-last__value.data-ultimo").inner_text().strip()
+        browser.close()
+        return int(valor)
 
 def calcular_porcentaje_cambio(nuevo_valor, ultimo_valor):
     """Calcula el porcentaje de cambio entre el nuevo valor y el último valor."""
