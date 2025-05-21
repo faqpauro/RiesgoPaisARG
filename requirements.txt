@@ -3,3 +3,4 @@ requests
 firebase-admin
 pytz
 matplotlib
+playwright
