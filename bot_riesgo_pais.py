@@ -11,7 +11,7 @@ from io import BytesIO
 from datetime import datetime, timedelta
 import math
 import random
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError
 
 # Definir las credenciales usando las variables de entorno
 firebase_cred = {
@@ -115,16 +115,41 @@ def guardar_historico_riesgo_pais(valor):
     doc_ref.set({'fecha': fecha_actual, 'valor': valor})
     print(f"Valor del riesgo país guardado para la fecha {fecha_actual}: {valor}")
 
-def obtener_riesgo_pais():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(ignore_https_errors=True)
-        page = context.new_page()
-        page.goto("https://www.ambito.com/contenidos/RIESGO-PAIS.html", wait_until="networkidle")
-        page.wait_for_selector("span.variation-last__value.data-ultimo")
-        valor = page.query_selector("span.variation-last__value.data-ultimo").inner_text().strip()
-        browser.close()
-        return int(valor)
+def obtener_riesgo_pais(max_reintentos: int = 3) -> int | None:
+    """Devuelve el valor de riesgo país o None si no se pudo leer."""
+    for intento in range(1, max_reintentos + 1):
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox", "--disable-dev-shm-usage"]
+                )
+                context = browser.new_context(ignore_https_errors=True)
+                page = context.new_page()
+
+                page.goto(
+                    "https://www.ambito.com/contenidos/RIESGO-PAIS.html",
+                    wait_until="domcontentloaded",
+                    timeout=60_000
+                )
+
+                span = page.wait_for_selector(
+                    "span.variation-last__value.data-ultimo",
+                    timeout=60_000
+                )
+                valor_txt = span.inner_text().strip().replace(".", "")
+                browser.close()
+                return int(valor_txt)
+
+        except TimeoutError:
+            print(f"[{intento}/{max_reintentos}] Timeout leyendo Ámbito; reintento en 10 s…")
+            time.sleep(10)
+        except Exception as e:
+            print(f"[{intento}/{max_reintentos}] Error inesperado: {e}")
+            time.sleep(5)
+
+    print("❌ No se pudo obtener Riesgo País tras varios intentos.")
+    return None
 
 def calcular_porcentaje_cambio(nuevo_valor, ultimo_valor):
     """Calcula el porcentaje de cambio entre el nuevo valor y el último valor."""
