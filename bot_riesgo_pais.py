@@ -588,7 +588,7 @@ while True:
         
         if nuevo_valor is not None and nuevo_valor != 0:
             ultimo_valor = leer_ultimo_valor_guardado()
-            if ultimo_valor is None or (abs(nuevo_valor - ultimo_valor) > 300):
+            if ultimo_valor is None or (abs(nuevo_valor - ultimo_valor) > 600):
                 print(f"La diferencia entre los valores es demasiado grande ({abs(nuevo_valor - ultimo_valor)} puntos). No se publicará el tweet.")
             elif abs(nuevo_valor - ultimo_valor) != 0:
                 postear_tweet(nuevo_valor, ultimo_valor)
