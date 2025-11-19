@@ -42,6 +42,10 @@ CONSUMER_SECRET = os.environ.get('CONSUMER_SECRET')
 ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
 ACCESS_TOKEN_SECRET = os.environ.get('ACCESS_TOKEN_SECRET')
 
+# Credenciales Bot Telegram
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+
 # Inicializa el cliente de Tweepy con el Bearer Token
 client = tweepy.Client(BEARER_TOKEN, CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
 
@@ -118,12 +122,10 @@ def guardar_historico_riesgo_pais(valor):
 def obtener_riesgo_pais(max_reintentos: int = 3) -> int | None:
     """Devuelve el valor de riesgo país o None si no se pudo leer."""
     for intento in range(1, max_reintentos + 1):
+        browser = context = None
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=["--no-sandbox", "--disable-dev-shm-usage"]
-                )
+                browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
                 context = browser.new_context(ignore_https_errors=True)
                 page = context.new_page()
 
@@ -138,17 +140,22 @@ def obtener_riesgo_pais(max_reintentos: int = 3) -> int | None:
                     timeout=60_000
                 )
                 valor_txt = span.inner_text().strip().replace(".", "")
-                browser.close()
                 return int(valor_txt)
-
         except TimeoutError:
             print(f"[{intento}/{max_reintentos}] Timeout leyendo Ámbito; reintento en 10 s…")
+            notificar_telegram(f"[{intento}/{max_reintentos}] Timeout Ámbito")
             time.sleep(10)
         except Exception as e:
-            print(f"[{intento}/{max_reintentos}] Error inesperado: {e}")
+            print(f"[{intento}/{max_reintentos}] Error inesperado: {e}; reintento en 5 s…")
+            notificar_telegram(f"Error leyendo Ámbito: {e}")
             time.sleep(5)
-
+        finally:
+            if context:
+                context.close()
+            if browser:
+                browser.close()
     print("❌ No se pudo obtener Riesgo País tras varios intentos.")
+    notificar_telegram("No se pudo obtener Riesgo País tras varios intentos.")
     return None
 
 def calcular_porcentaje_cambio(nuevo_valor, ultimo_valor):
@@ -471,9 +478,10 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     )
     client.create_tweet(text=tweet)
     print(f"Tweet enviado: {tweet}")
-
+    
     # Guardar el nuevo valor del riesgo país después de postear el tweet
     guardar_valor_riesgo_pais(nuevo_valor)
+    notificar_telegram(f"Tweet diario publicado: {nuevo_valor}")
 
 def postear_resumen_diario():
     """Postea un tweet con el resumen diario del cambio del riesgo país."""
@@ -508,6 +516,7 @@ def postear_resumen_diario():
         tweet += f"🇦🇷 #RiesgoPaís #Argentina"
         client.create_tweet(text=tweet)
         print(f"Tweet resumen diario enviado: {tweet}")
+        notificar_telegram("Resumen diario publicado")
 
 def postear_resumen_mensual():
     """Postea un resumen mensual del cambio del riesgo país."""
@@ -559,6 +568,20 @@ def postear_resumen_mensual():
 
     # Guardar el valor actual como el último día del mes
     guardar_valor_ultimo_dia_mes_anterior(valor_actual)
+    notificar_telegram("Resumen mensual publicado")
+
+def notificar_telegram(mensaje: str):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("Telegram no configurado; mensaje no enviado.")
+        return
+    ts = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires')).strftime("%Y-%m-%d %H:%M:%S")
+    texto = f"[{ts}] {mensaje}"
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {"chat_id": TELEGRAM_CHAT_ID, "text": texto}
+        requests.post(url, json=payload, timeout=10)
+    except Exception as e:
+        print(f"No se pudo enviar a Telegram: {e}")
 
 # Bucle principal
 actualizado_hoy = False
@@ -567,54 +590,67 @@ grafico_posteado = False
 resumen_mensual_posteado = False
 
 while True:
-    # Obtener la hora y día actual en la zona horaria de Buenos Aires
-    ahora = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires'))
-    hora_actual = ahora.time()
-    dia_actual = ahora.weekday()  # 0 = Lunes, 6 = Domingo
-    ultimo_dia_mes = (ahora + timedelta(days=1)).day == 1 # Verificar si es el último día del mes
-    
-    # Publicar resumen mensual el último día del mes a las 22:00
-    if ultimo_dia_mes and hora_actual.hour == 22 and 10 <= hora_actual.minute <= 15 and not resumen_mensual_posteado:
-        postear_resumen_mensual()
-        resumen_mensual_posteado = True
+    try:
+        # Obtener la hora y día actual en la zona horaria de Buenos Aires
+        ahora = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires'))
+        hora_actual = ahora.time()
+        dia_actual = ahora.weekday()  # 0 = Lunes, 6 = Domingo
+        ultimo_dia_mes = (ahora + timedelta(days=1)).day == 1  # Verificar si es el último día del mes
 
-    # Resetear indicador al inicio de un nuevo mes
-    if ahora.day == 1 and hora_actual.hour == 0:
-        resumen_mensual_posteado = False
-        
-    # Verificar si está dentro del horario permitido
-    if dia_actual < 5 and (hora_actual >= datetime.strptime("08:00", "%H:%M").time() or hora_actual <= datetime.strptime("01:00", "%H:%M").time()):
-        nuevo_valor = obtener_riesgo_pais()
-        
-        if nuevo_valor is not None and nuevo_valor != 0:
-            ultimo_valor = leer_ultimo_valor_guardado()
-            if ultimo_valor is None or (abs(nuevo_valor - ultimo_valor) > 600):
-                print(f"La diferencia entre los valores es demasiado grande ({abs(nuevo_valor - ultimo_valor)} puntos). No se publicará el tweet.")
-            elif abs(nuevo_valor - ultimo_valor) != 0:
-                postear_tweet(nuevo_valor, ultimo_valor)
-            else:
-                print(f"El riesgo país no cambió. Valor actual: {nuevo_valor}")
-        
-        # Verificar si la hora está entre 23:50 y 23:55 para actualizar el valor del día anterior
-        if hora_actual.hour == 23 and 50 <= hora_actual.minute <= 55 and not actualizado_hoy:
-            actualizar_valor_dia_anterior()
-            guardar_historico_riesgo_pais(nuevo_valor)
-            actualizado_hoy = True
-            resumen_diario_posteado = False  # Permitir que se postee el resumen al día siguiente
-            print("Valor del día anterior actualizado y Valor historico agregado.")
-        
-        # Postear el resumen diario a las 22:00
-        if hora_actual.hour == 22 and not resumen_diario_posteado:
-            postear_resumen_diario()
-            resumen_diario_posteado = True
-        
-        # Resetear el indicador al inicio de un nuevo día
-        if hora_actual.hour == 0:
-            actualizado_hoy = False
-            resumen_diario_posteado = False
-            grafico_posteado = False
-    else:
-        print("Fuera del horario permitido. Bot en espera...")
+        # Publicar resumen mensual el último día del mes a las 22:00
+        if ultimo_dia_mes and hora_actual.hour == 22 and 10 <= hora_actual.minute <= 15 and not resumen_mensual_posteado:
+            postear_resumen_mensual()
+            resumen_mensual_posteado = True
 
-    # Esperar 5 minutos antes de la próxima verificación
-    time.sleep(300)  # 5 minutos = 300 segundos
+        # Resetear indicador al inicio de un nuevo mes
+        if ahora.day == 1 and hora_actual.hour == 0:
+            resumen_mensual_posteado = False
+
+        # Verificar si está dentro del horario permitido
+        if dia_actual < 5 and (hora_actual >= datetime.strptime("08:00", "%H:%M").time() or hora_actual <= datetime.strptime("01:00", "%H:%M").time()):
+            nuevo_valor = obtener_riesgo_pais()
+
+            if nuevo_valor is None:
+                print("No se obtuvo Riesgo País; reintentamos en 5 minutos.")
+                time.sleep(300)
+                continue
+
+            if nuevo_valor != 0:
+                ultimo_valor = leer_ultimo_valor_guardado()
+                if ultimo_valor is None or (abs(nuevo_valor - ultimo_valor) > 400):
+                    print(f"La diferencia entre los valores es demasiado grande ({abs(nuevo_valor - ultimo_valor)} puntos). No se publicará el tweet.")
+                    notificar_telegram(f"Diferencia muy grande, no se publica: {abs(nuevo_valor - ultimo_valor)} pts")
+                elif abs(nuevo_valor - ultimo_valor) != 0:
+                    postear_tweet(nuevo_valor, ultimo_valor)
+                else:
+                    print(f"El riesgo país no cambió. Valor actual: {nuevo_valor}")
+
+            # Verificar si la hora está entre 23:50 y 23:55 para actualizar el valor del día anterior
+            if hora_actual.hour == 23 and 50 <= hora_actual.minute <= 55 and not actualizado_hoy:
+                actualizar_valor_dia_anterior()
+                guardar_historico_riesgo_pais(nuevo_valor)
+                actualizado_hoy = True
+                resumen_diario_posteado = False  # Permitir que se postee el resumen al día siguiente
+                print("Valor del día anterior actualizado y Valor historico agregado.")
+
+            # Postear el resumen diario a las 22:00
+            if hora_actual.hour == 22 and not resumen_diario_posteado:
+                postear_resumen_diario()
+                resumen_diario_posteado = True
+
+            # Resetear el indicador al inicio de un nuevo día
+            if hora_actual.hour == 0:
+                actualizado_hoy = False
+                resumen_diario_posteado = False
+                grafico_posteado = False
+        else:
+            print("Fuera del horario permitido. Bot en espera...")
+
+        # Esperar 5 minutos antes de la próxima verificación
+        time.sleep(300)  # 5 minutos = 300 segundos
+
+    except Exception as e:
+        print(f"Error en el loop principal: {e}. Reintentamos en 1 minuto.")
+        notificar_telegram(f"Error en loop principal: {e}")
+        time.sleep(60)
+        continue
