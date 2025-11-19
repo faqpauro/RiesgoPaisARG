@@ -122,25 +122,32 @@ def guardar_historico_riesgo_pais(valor):
 def obtener_riesgo_pais(max_reintentos: int = 3) -> int | None:
     """Devuelve el valor de riesgo país o None si no se pudo leer."""
     for intento in range(1, max_reintentos + 1):
-        browser = context = None
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox", "--disable-dev-shm-usage"]
+                )
                 context = browser.new_context(ignore_https_errors=True)
                 page = context.new_page()
 
-                page.goto(
-                    "https://www.ambito.com/contenidos/RIESGO-PAIS.html",
-                    wait_until="domcontentloaded",
-                    timeout=60_000
-                )
+                try:
+                    page.goto(
+                        "https://www.ambito.com/contenidos/RIESGO-PAIS.html",
+                        wait_until="domcontentloaded",
+                        timeout=60_000
+                    )
+                    span = page.wait_for_selector(
+                        "span.variation-last__value.data-ultimo",
+                        timeout=60_000
+                    )
+                    valor_txt = span.inner_text().strip().replace(".", "")
+                    return int(valor_txt)
+                finally:
+                    # cerrar antes de salir del `with`
+                    context.close()
+                    browser.close()
 
-                span = page.wait_for_selector(
-                    "span.variation-last__value.data-ultimo",
-                    timeout=60_000
-                )
-                valor_txt = span.inner_text().strip().replace(".", "")
-                return int(valor_txt)
         except TimeoutError:
             print(f"[{intento}/{max_reintentos}] Timeout leyendo Ámbito; reintento en 10 s…")
             notificar_telegram(f"[{intento}/{max_reintentos}] Timeout Ámbito")
@@ -149,11 +156,7 @@ def obtener_riesgo_pais(max_reintentos: int = 3) -> int | None:
             print(f"[{intento}/{max_reintentos}] Error inesperado: {e}; reintento en 5 s…")
             notificar_telegram(f"Error leyendo Ámbito: {e}")
             time.sleep(5)
-        finally:
-            if context:
-                context.close()
-            if browser:
-                browser.close()
+
     print("❌ No se pudo obtener Riesgo País tras varios intentos.")
     notificar_telegram("No se pudo obtener Riesgo País tras varios intentos.")
     return None
