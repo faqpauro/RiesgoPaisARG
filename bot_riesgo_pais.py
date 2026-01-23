@@ -477,7 +477,7 @@ def postear_tweet(nuevo_valor, ultimo_valor):
                 linea_referencia = f"🟢 vs {txt_cuando}: Bajó {abs(diff_anterior)} {txt_pts}"
             else:
                 igual_txt = "ayer" if txt_cuando == "Ayer" else "el viernes"
-                linea_referencia = f"📆⚖️ Igual que {igual_txt}"
+                linea_referencia = f"⚖️ Igual que {igual_txt}"
         # Determinar si usar "punto" o "puntos"
         puntos_texto = "punto" if abs(diferencia) == 1 else "puntos"
         if diferencia > 0:
