@@ -456,13 +456,28 @@ def postear_grafico():
 def postear_tweet(nuevo_valor, ultimo_valor):
     """Postea un tweet indicando si el riesgo país subió o bajó."""
     tz = pytz.timezone('America/Argentina/Buenos_Aires')
-    fecha_hora = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+    ahora_dt = datetime.now(tz)
+    fecha_hora = ahora_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+    linea_referencia = ""
     
     if ultimo_valor is not None:
         diferencia = nuevo_valor - ultimo_valor
         # Calcular porcentaje respecto al valor del día anterior
         valor_dia_anterior = leer_valor_dia_anterior()
         porcentaje_cambio_diario = calcular_porcentaje_cambio_diario(nuevo_valor, valor_dia_anterior)
+        if valor_dia_anterior is not None:
+            diff_anterior = nuevo_valor - valor_dia_anterior
+            txt_pts = "punto" if abs(diff_anterior) == 1 else "puntos"
+            txt_cuando = "Viernes" if ahora_dt.weekday() == 0 else "Ayer"
+
+            if diff_anterior > 0:
+                linea_referencia = f"🔴 vs {txt_cuando}: Subió {diff_anterior} {txt_pts}"
+            elif diff_anterior < 0:
+                linea_referencia = f"🟢 vs {txt_cuando}: Bajó {abs(diff_anterior)} {txt_pts}"
+            else:
+                igual_txt = "ayer" if txt_cuando == "Ayer" else "el viernes"
+                linea_referencia = f"📆⚖️ Igual que {igual_txt}"
         # Determinar si usar "punto" o "puntos"
         puntos_texto = "punto" if abs(diferencia) == 1 else "puntos"
         if diferencia > 0:
@@ -476,6 +491,7 @@ def postear_tweet(nuevo_valor, ultimo_valor):
     tweet = (
         f"{movimiento}\n"
         f"⚠️ Ahora es de {nuevo_valor} ({porcentaje_cambio_diario:.2f}%)\n"
+        f"{linea_referencia}\n"
         f"🇦🇷 #RiesgoPaís #Argentina\n"
         f"🕒 {fecha_hora}"
     )
