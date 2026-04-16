@@ -13,7 +13,7 @@ import math
 import random
 from playwright.sync_api import sync_playwright, TimeoutError
 
-# Definir las credenciales usando las variables de entorno
+# Definir las credenciales usando las variables de entorno.
 firebase_cred = {
     "type": os.environ.get('FIREBASE_TYPE'),
     "project_id": os.environ.get('FIREBASE_PROJECT_ID'),
