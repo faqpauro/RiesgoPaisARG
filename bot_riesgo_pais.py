@@ -16,6 +16,10 @@ from publisher import (
     postear_grafico
 )
 from utils import notificar_telegram
+from ranking_manager import (
+    ejecutar_flujo_ranking_telegram,
+    sincronizar_ranking_automatico
+)
 
 if __name__ == '__main__':
     # Bucle principal
@@ -23,6 +27,7 @@ if __name__ == '__main__':
     resumen_diario_posteado = False
     grafico_posteado = False
     resumen_mensual_posteado = False
+    ranking_preguntado = False
 
     print("🤖 Bot de Riesgo País iniciado correctamente...")
     notificar_telegram("Bot de Riesgo País iniciado correctamente")
@@ -32,7 +37,7 @@ if __name__ == '__main__':
             # Obtener la hora y día actual en la zona horaria de Buenos Aires
             ahora = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires'))
             hora_actual = ahora.time()
-            dia_actual = ahora.weekday()  # 0 = Lunes, 6 = Domingo
+            dia_actual = ahora.weekday()  # 0 = Lunes, 5 = Sábado, 6 = Domingo
             ultimo_dia_mes = (ahora + timedelta(days=1)).day == 1  # Verificar si es el último día del mes
 
             # Publicar resumen mensual el último día del mes a las 22:00
@@ -49,7 +54,12 @@ if __name__ == '__main__':
                 postear_grafico()
                 grafico_posteado = True
 
-            # Verificar si está dentro del horario permitido
+            # Actualizar ranking de América interactivo por Telegram los domingos a las 14:00 PM
+            if dia_actual == 6 and hora_actual.hour == 14 and not ranking_preguntado:
+                ejecutar_flujo_ranking_telegram()
+                ranking_preguntado = True
+
+            # Verificar si está dentro del horario permitido de mercado (Lunes a Viernes)
             if dia_actual < 5 and (hora_actual >= datetime.strptime("08:00", "%H:%M").time() or hora_actual <= datetime.strptime("01:00", "%H:%M").time()):
                 nuevo_valor = obtener_riesgo_pais()
 
@@ -77,9 +87,10 @@ if __name__ == '__main__':
                 if hora_actual.hour == 23 and 50 <= hora_actual.minute <= 55 and not actualizado_hoy:
                     actualizar_valor_dia_anterior()
                     guardar_historico_riesgo_pais(nuevo_valor)
+                    sincronizar_ranking_automatico()
                     actualizado_hoy = True
                     resumen_diario_posteado = False  # Permitir que se postee el resumen al día siguiente
-                    print("Valor del día anterior actualizado y Valor historico agregado.")
+                    print("Valor del día anterior actualizado, histórico guardado y ranking sincronizado.")
 
                 # Postear el resumen diario a las 22:00
                 if hora_actual.hour == 22 and not resumen_diario_posteado:
@@ -91,13 +102,20 @@ if __name__ == '__main__':
                     actualizado_hoy = False
                     resumen_diario_posteado = False
                     grafico_posteado = False
+                    ranking_preguntado = False
 
                 # Esperar 5 minutos antes de la próxima verificación
                 time.sleep(300)  # 5 minutos = 300 segundos
             else:
-                print("Fuera del horario permitido. Bot en espera...")
-                # Esperar 30 minutos (1800 segundos) fuera de horario para reducir spam de logs
-                time.sleep(1800)
+                # Resetear flags a medianoche en fines de semana
+                if hora_actual.hour == 0:
+                    actualizado_hoy = False
+                    resumen_diario_posteado = False
+                    grafico_posteado = False
+                    ranking_preguntado = False
+
+                print("Fuera del horario de mercado. Bot en espera...")
+                time.sleep(300)
 
         except Exception as e:
             print(f"Error en el loop principal: {e}. Reintentamos en 1 minuto.")

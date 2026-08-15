@@ -131,3 +131,32 @@ def buscar_mejor_valor_historico(valor_actual: int) -> tuple[datetime, int] | tu
     except Exception as e:
         print(f"Error al buscar histórico filtrado: {e}")
         return None, None
+
+def leer_ranking_america() -> dict | None:
+    """Lee el documento con el ranking de América desde Firestore."""
+    try:
+        doc_ref = db.collection('riesgo_pais').document('ranking_america')
+        doc = doc_ref.get()
+        if doc.exists:
+            return doc.to_dict()
+    except Exception as e:
+        print(f"Error al leer ranking de América desde Firestore: {e}")
+    return None
+
+def guardar_ranking_america(paises: list[dict], fecha_actualizacion: str | None = None):
+    """Guarda el listado completo del ranking de América en Firestore."""
+    try:
+        if not fecha_actualizacion:
+            tz = pytz.timezone('America/Argentina/Buenos_Aires')
+            fecha_actualizacion = datetime.now(tz).strftime('%d/%m/%Y %H:%M')
+        
+        doc_ref = db.collection('riesgo_pais').document('ranking_america')
+        data = {
+            'paises': paises,
+            'ultima_actualizacion': fecha_actualizacion
+        }
+        doc_ref.set(data)
+        print(f"✅ Ranking de América guardado en Firestore ({len(paises)} países).")
+    except Exception as e:
+        print(f"❌ Error al guardar ranking de América en Firestore: {e}")
+
