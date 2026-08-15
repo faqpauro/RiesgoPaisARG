@@ -382,3 +382,28 @@ def sincronizar_ranking_automatico():
     tz = pytz.timezone('America/Argentina/Buenos_Aires')
     fecha_act = datetime.now(tz).strftime('%d/%m/%Y %H:%M')
     guardar_ranking_america(lista_final, fecha_act)
+
+def verificar_comando_telegram() -> bool:
+    """
+    Verifica si el usuario envió /ranking o /actualizar para disparar el flujo manual por Telegram.
+    """
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return False
+    try:
+        r = requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates", params={"limit": 10}, timeout=5)
+        res = r.json()
+        if res.get("ok") and res.get("result"):
+            for update in res["result"]:
+                msg = update.get("message")
+                if msg:
+                    sender = str(msg.get("chat", {}).get("id"))
+                    text = msg.get("text", "").strip().lower()
+                    if sender == str(TELEGRAM_CHAT_ID) and text in ["/ranking", "/actualizar", "ranking", "actualizar"]:
+                        # Avanzar offset para no volver a capturar el mismo comando
+                        offset = update["update_id"] + 1
+                        requests.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates", params={"offset": offset}, timeout=5)
+                        return True
+    except Exception as e:
+        print(f"Error verificando comandos de Telegram: {e}")
+    return False
+

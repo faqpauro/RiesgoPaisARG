@@ -18,8 +18,19 @@ from publisher import (
 from utils import notificar_telegram
 from ranking_manager import (
     ejecutar_flujo_ranking_telegram,
-    sincronizar_ranking_automatico
+    sincronizar_ranking_automatico,
+    verificar_comando_telegram
 )
+
+def esperar_con_escucha(segundos: int = 300, intervalo: int = 10):
+    """Espera una cantidad de segundos pero verifica periódicamente comandos de Telegram."""
+    transcurrido = 0
+    while transcurrido < segundos:
+        if verificar_comando_telegram():
+            print("📩 Comando /ranking recibido por Telegram. Iniciando cuestionario...")
+            ejecutar_flujo_ranking_telegram()
+        time.sleep(intervalo)
+        transcurrido += intervalo
 
 if __name__ == '__main__':
     # Bucle principal
@@ -65,7 +76,7 @@ if __name__ == '__main__':
 
                 if nuevo_valor is None:
                     print("No se obtuvo Riesgo País; reintentamos en 5 minutos.")
-                    time.sleep(300)
+                    esperar_con_escucha(300)
                     continue
 
                 if nuevo_valor != 0:
@@ -105,7 +116,7 @@ if __name__ == '__main__':
                     ranking_preguntado = False
 
                 # Esperar 5 minutos antes de la próxima verificación
-                time.sleep(300)  # 5 minutos = 300 segundos
+                esperar_con_escucha(300)
             else:
                 # Resetear flags a medianoche en fines de semana
                 if hora_actual.hour == 0:
@@ -115,7 +126,7 @@ if __name__ == '__main__':
                     ranking_preguntado = False
 
                 print("Fuera del horario de mercado. Bot en espera...")
-                time.sleep(300)
+                esperar_con_escucha(300)
 
         except Exception as e:
             print(f"Error en el loop principal: {e}. Reintentamos en 1 minuto.")
