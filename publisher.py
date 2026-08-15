@@ -39,7 +39,9 @@ def postear_grafico_directo():
     
     texto = (
         f"📊 #RiesgoPaís: {rango_años}\n"
-        f"📅 Fecha: {fecha_actual}\n"
+        f"📅 Fecha: {fecha_actual}\n\n"
+        "🌐 Seguí el riesgo país en tiempo real:\n"
+        "https://riesgopaisar.web.app/\n\n"
         "🇦🇷 #Argentina #Economía"
     )
     
@@ -82,7 +84,9 @@ def postear_grafico_moderado():
             
             texto = (
                 f"📊 #RiesgoPaís: {rango_años}\n"
-                f"📅 Fecha: {fecha_actual}\n"
+                f"📅 Fecha: {fecha_actual}\n\n"
+                "🌐 Seguí el riesgo país en tiempo real:\n"
+                "https://riesgopaisar.web.app/\n\n"
                 "🇦🇷 #Argentina #Economía"
             )
             
@@ -285,7 +289,7 @@ def postear_ranking_america_tweet(paises_lista: list[dict]) -> str:
 
         lineas.append(f"{flag} {display_name}: {val} ({pct_str})")
 
-    lineas.append("\n#RiesgoPaís #América")
+    lineas.append("\n🌐 Seguí el ranking y datos en vivo:\nhttps://riesgopaisar.web.app/\n\n#RiesgoPaís #América")
     tweet_text = "\n".join(lineas)
 
     client.create_tweet(text=tweet_text)
