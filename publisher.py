@@ -238,3 +238,57 @@ def postear_resumen_mensual():
     # Guardar el valor actual como el último día del mes
     guardar_valor_ultimo_dia_mes_anterior(valor_actual)
     notificar_telegram("Resumen mensual publicado")
+
+def postear_ranking_america_tweet(paises_lista: list[dict]) -> str:
+    """Publica en X (Twitter) la tabla comparativa de riesgo país de América."""
+    tz = pytz.timezone('America/Argentina/Buenos_Aires')
+    fecha_str = datetime.now(tz).strftime('%d/%m/%Y')
+
+    banderas = {
+        "EEUU": "🇺🇸",
+        "Uruguay": "🇺🇾",
+        "Chile": "🇨🇱",
+        "Paraguay": "🇵🇾",
+        "Perú": "🇵🇪",
+        "Guatemala": "🇬🇹",
+        "Costa Rica": "🇨🇷",
+        "Panamá": "🇵🇦",
+        "República Dominicana": "🇩🇴",
+        "Rep. Dominicana": "🇩🇴",
+        "Brasil": "🇧🇷",
+        "México": "🇲🇽",
+        "Colombia": "🇨🇴",
+        "Honduras": "🇭🇳",
+        "El Salvador": "🇸🇻",
+        "Argentina": "🇦🇷",
+        "Ecuador": "🇪🇨",
+        "Bolivia": "🇧🇴",
+        "Venezuela": "🇻🇪",
+    }
+
+    lineas = [f"📊 Riesgo País en América ({fecha_str})\n", "🇺🇸 EEUU: 0 (0%)"]
+    paises_ordenados = sorted(paises_lista, key=lambda x: x.get('value', 0))
+
+    for p in paises_ordenados:
+        name = p.get('name', '')
+        display_name = "Rep. Dominicana" if name == "República Dominicana" else name
+        flag = banderas.get(name, banderas.get(display_name, '🏳️'))
+        val = p.get('value', 0)
+        delta = p.get('delta', 0)
+
+        val_anterior = val - delta
+        if val_anterior > 0 and delta != 0:
+            pct = (delta / val_anterior) * 100
+            pct_str = f"{pct:+.1f}%".replace('.', ',')
+        else:
+            pct_str = "0%"
+
+        lineas.append(f"{flag} {display_name}: {val} ({pct_str})")
+
+    lineas.append("\n#RiesgoPaís #América")
+    tweet_text = "\n".join(lineas)
+
+    client.create_tweet(text=tweet_text)
+    print(f"Tweet de ranking de América enviado:\n{tweet_text}")
+    return tweet_text
+
