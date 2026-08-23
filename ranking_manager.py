@@ -26,7 +26,7 @@ PAISES_CATALOGO = [
     {"name": "Guatemala",            "iso": "gt", "code": "GTM", "default_val": 118,  "excel_names": ["guatemala"]},
     {"name": "Panamá",               "iso": "pa", "code": "PAN", "default_val": 118,  "excel_names": ["panama"]},
     {"name": "Costa Rica",           "iso": "cr", "code": "CRI", "default_val": 131,  "excel_names": ["costa rica"]},
-    {"name": "República Dominicana", "iso": "do", "code": "DOM", "default_val": 157,  "excel_names": ["rep dom", "dominicana"]},
+    {"name": "Rep. Dominicana",      "iso": "do", "code": "DOM", "default_val": 157,  "excel_names": ["rep dom", "dominicana"]},
     {"name": "Honduras",             "iso": "hn", "code": "HND", "default_val": 158,  "excel_names": ["honduras"]},
     {"name": "Brasil",               "iso": "br", "code": "BRA", "default_val": 181,  "excel_names": ["brasil", "brazil"]},
     {"name": "Colombia",             "iso": "co", "code": "COL", "default_val": 188,  "excel_names": ["colombia"]},
