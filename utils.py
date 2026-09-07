@@ -5,18 +5,43 @@ from datetime import datetime
 from io import BytesIO
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
-def notificar_telegram(mensaje: str):
+def notificar_telegram(mensaje: str, incluir_timestamp: bool = False):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("Telegram no configurado; mensaje no enviado.")
         return
-    ts = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires')).strftime("%Y-%m-%d %H:%M:%S")
-    texto = f"[{ts}] {mensaje}"
+    if incluir_timestamp:
+        ts = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires')).strftime("%Y-%m-%d %H:%M:%S")
+        texto = f"[{ts}] {mensaje}"
+    else:
+        texto = mensaje
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         payload = {"chat_id": TELEGRAM_CHAT_ID, "text": texto}
         requests.post(url, json=payload, timeout=10)
     except Exception as e:
         print(f"No se pudo enviar a Telegram: {e}")
+
+def enviar_foto_telegram(imagen_bytes: BytesIO, caption: str = "") -> bool:
+    """Envía una foto a Telegram con un texto descriptivo opcional."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("Telegram no configurado; foto no enviada.")
+        return False
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+    data = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "caption": caption
+    }
+    imagen_bytes.seek(0)
+    files = {
+        "photo": ("grafico.png", imagen_bytes.getvalue(), "image/png")
+    }
+    try:
+        r = requests.post(url, data=data, files=files, timeout=20)
+        res = r.json()
+        return bool(res.get("ok"))
+    except Exception as e:
+        print(f"No se pudo enviar foto a Telegram: {e}")
+        return False
 
 def calcular_porcentaje_cambio(nuevo_valor, ultimo_valor):
     """Calcula el porcentaje de cambio entre el nuevo valor y el último valor."""

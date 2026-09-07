@@ -361,24 +361,24 @@ def ejecutar_flujo_ranking_telegram():
     resumen_texto = "\n".join(resumen_lineas)
     enviar_mensaje_telegram(resumen_texto)
 
-    # 3. Preguntar únicamente si se desea publicar la tabla en X (Twitter)
-    txt_x = "📢 *¿Deseas publicar la tabla del Ranking de América en X (Twitter)?*"
-    btn_x = [("✅ Sí, publicar en X", "pub_x_si"), ("❌ No, no publicar", "pub_x_no")]
+    # 3. Preguntar si se desea enviar el texto formateado para X (Twitter) a Telegram
+    txt_x = "📢 *¿Deseas generar el texto del Ranking de América para copiar a X (Twitter)?*"
+    btn_x = [("✅ Sí, enviar texto para X", "pub_x_si"), ("❌ No, omitir", "pub_x_no")]
     msg_x_id = enviar_pregunta_botones(txt_x, btn_x)
 
     if msg_x_id:
         resp_x, offset = esperar_respuesta_callback(msg_x_id, offset, timeout_segundos=1800)
         if resp_x == "pub_x_si":
-            editar_mensaje_texto(msg_x_id, "⏳ *Publicando tabla en X (Twitter)...*")
+            editar_mensaje_texto(msg_x_id, "⏳ *Generando texto para copiar a X (Twitter)...*")
             try:
                 from publisher import postear_ranking_america_tweet
                 postear_ranking_america_tweet(lista_final)
-                editar_mensaje_texto(msg_x_id, "✅ *¡Tabla de América publicada con éxito en X (Twitter)!*")
+                editar_mensaje_texto(msg_x_id, "✅ *¡Texto de América enviado listo para copiar y pegar en X!*")
             except Exception as e:
-                print(f"Error publicando tabla en X: {e}")
-                editar_mensaje_texto(msg_x_id, f"❌ *Error al publicar en X:* {e}")
+                print(f"Error generando texto para X: {e}")
+                editar_mensaje_texto(msg_x_id, f"❌ *Error al generar texto para X:* {e}")
         else:
-            editar_mensaje_texto(msg_x_id, "❌ *No se publicará la tabla en X.*")
+            editar_mensaje_texto(msg_x_id, "❌ *Omitido el envío de texto para X.*")
 
     print("Flujo de ranking finalizado con éxito.")
 

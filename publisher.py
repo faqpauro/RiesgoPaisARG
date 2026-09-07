@@ -13,13 +13,14 @@ from database import (
 from charts import obtener_datos_historicos_para_grafico, generar_grafico_en_memoria
 from utils import (
     notificar_telegram,
+    enviar_foto_telegram,
     calcular_porcentaje_cambio_diario,
     calcular_porcentaje_cambio,
     traducir_fecha
 )
 
 def postear_grafico_directo():
-    """Genera y postea un gráfico con los datos históricos de riesgo país directamente a X."""
+    """Genera el gráfico con datos históricos y lo envía por Telegram listo para X."""
     datos = obtener_datos_historicos_para_grafico()
     if not datos:
         print("No hay suficientes datos para generar el gráfico.")
@@ -28,8 +29,8 @@ def postear_grafico_directo():
     # Generar gráfico en memoria
     imagen_buffer = generar_grafico_en_memoria(datos)
 
-    # Subir la imagen con `api`
-    media = api.media_upload(filename="grafico.png", file=imagen_buffer)
+    # Subir a X comentado temporalmente por falta de créditos de API:
+    # media = api.media_upload(filename="grafico.png", file=imagen_buffer)
 
     # Obtener la fecha actual y los rangos de años
     hoy = datetime.now()
@@ -45,11 +46,14 @@ def postear_grafico_directo():
         "🇦🇷 #Argentina #Economía"
     )
     
-    client.create_tweet(text=texto, media_ids=[media.media_id])
-    print("Tweet con gráfico enviado.")    
+    # client.create_tweet(text=texto, media_ids=[media.media_id])
+    # print("Tweet con gráfico enviado.")
+    
+    enviar_foto_telegram(imagen_buffer, caption=texto)
+    print("Gráfico y texto enviados a Telegram.")
 
 def postear_grafico_moderado():
-    """Genera el gráfico, lo envía a Telegram para aprobación, y lo publica en X si es aprobado."""
+    """Genera el gráfico, lo envía a Telegram para aprobación, y envía el texto si es aprobado."""
     from utils import enviar_grafico_moderacion_telegram, esperar_decision_moderacion
     
     datos = obtener_datos_historicos_para_grafico()
@@ -73,9 +77,6 @@ def postear_grafico_moderado():
     if aprobado:
         imagen_buffer.seek(0)
         try:
-            # Subir la imagen con `api`
-            media = api.media_upload(filename="grafico.png", file=imagen_buffer)
-
             # Obtener la fecha actual y los rangos de años
             hoy = datetime.now()
             fecha_actual = traducir_fecha(hoy)
@@ -90,12 +91,14 @@ def postear_grafico_moderado():
                 "🇦🇷 #Argentina #Economía"
             )
             
-            client.create_tweet(text=texto, media_ids=[media.media_id])
-            print("Tweet con gráfico enviado tras aprobación.")
-            notificar_telegram("✅ Gráfico histórico publicado con éxito en X (Twitter).")
+            # Subida a X comentada temporalmente:
+            # media = api.media_upload(filename="grafico.png", file=imagen_buffer)
+            # client.create_tweet(text=texto, media_ids=[media.media_id])
+            print("Gráfico aprobado. Texto enviado a Telegram para X.")
+            notificar_telegram(texto)
         except Exception as e:
-            print(f"Error al publicar gráfico aprobado: {e}")
-            notificar_telegram(f"❌ Error al publicar gráfico aprobado en X: {e}")
+            print(f"Error al procesar gráfico aprobado: {e}")
+            notificar_telegram(f"❌ Error al procesar gráfico aprobado: {e}")
     else:
         print("Publicación del gráfico cancelada (rechazada o expirada).")
 
@@ -110,10 +113,9 @@ def postear_grafico():
         return postear_grafico_directo()
 
 def postear_tweet(nuevo_valor, ultimo_valor):
-    """Postea un tweet indicando si el riesgo país subió o bajó."""
+    """Prepara el texto del cambio del riesgo país y lo envía a Telegram listo para copiar a X."""
     tz = pytz.timezone('America/Argentina/Buenos_Aires')
     ahora_dt = datetime.now(tz)
-    fecha_hora = ahora_dt.strftime('%Y-%m-%d %H:%M:%S')
 
     linea_referencia = ""
     
@@ -144,22 +146,27 @@ def postear_tweet(nuevo_valor, ultimo_valor):
         movimiento = "ℹ️ No tiene un valor previo registrado"
         porcentaje_cambio_diario = 0  # Para evitar errores si no hay valor previo
     
-    tweet = (
-        f"{movimiento}\n"
-        f"⚠️ Ahora es de {nuevo_valor} ({porcentaje_cambio_diario:.2f}%)\n"
-        f"{linea_referencia}\n"
-        f"🇦🇷 #RiesgoPaís #Argentina\n"
-        f"🕒 {fecha_hora}"
-    )
-    client.create_tweet(text=tweet)
-    print(f"Tweet enviado: {tweet}")
+    lineas = [
+        movimiento,
+        f"⚠️ Ahora es de {nuevo_valor} ({porcentaje_cambio_diario:.2f}%)"
+    ]
+    if linea_referencia:
+        lineas.append(linea_referencia)
+    lineas.append("🇦🇷 #RiesgoPaís #Argentina")
     
-    # Guardar el nuevo valor del riesgo país después de postear el tweet
+    # La hora fue omitida intencionalmente para copiar y pegar directo en X sin timestamps
+    tweet = "\n".join(lineas)
+    
+    # Envío a X comentado:
+    # client.create_tweet(text=tweet)
+    print(f"Texto de cambio de riesgo país para Telegram:\n{tweet}")
+    
+    # Guardar el nuevo valor del riesgo país después de generar el mensaje
     guardar_valor_riesgo_pais(nuevo_valor)
-    notificar_telegram(f"Tweet diario publicado: {nuevo_valor}")
+    notificar_telegram(tweet)
 
 def postear_resumen_diario():
-    """Postea un tweet con el resumen diario del cambio del riesgo país."""
+    """Genera el resumen diario del cambio del riesgo país y lo envía a Telegram para copiar a X."""
     valor_actual = leer_ultimo_valor_guardado()
     valor_dia_anterior = leer_valor_dia_anterior()
     if valor_actual is not None and valor_dia_anterior is not None:
@@ -188,12 +195,14 @@ def postear_resumen_diario():
             tweet += f"🏆 Mejor desde {mejor_fecha_str} ({mejor_valor:.0f})\n"
         
         tweet += f"🇦🇷 #RiesgoPaís #Argentina"
-        client.create_tweet(text=tweet)
-        print(f"Tweet resumen diario enviado: {tweet}")
-        notificar_telegram("Resumen diario publicado")
+        
+        # Envío a X comentado:
+        # client.create_tweet(text=tweet)
+        print(f"Resumen diario enviado a Telegram:\n{tweet}")
+        notificar_telegram(tweet)
 
 def postear_resumen_mensual():
-    """Postea un resumen mensual del cambio del riesgo país."""
+    """Genera el resumen mensual del cambio del riesgo país y lo envía a Telegram para copiar a X."""
     hoy = datetime.now(pytz.timezone('America/Argentina/Buenos_Aires'))
     valor_anterior = leer_valor_ultimo_dia_mes_anterior()  # Valor del mes anterior
     valor_actual = leer_ultimo_valor_guardado()  # Valor actual (último día del mes)
@@ -235,16 +244,16 @@ def postear_resumen_mensual():
 
     texto += "🇦🇷 #RiesgoPaís #Argentina"
 
-    # Publicar en Twitter
-    client.create_tweet(text=texto)
-    print(f"Tweet resumen mensual enviado: {texto}")
+    # Envío a X comentado:
+    # client.create_tweet(text=texto)
+    print(f"Resumen mensual enviado a Telegram:\n{texto}")
 
     # Guardar el valor actual como el último día del mes
     guardar_valor_ultimo_dia_mes_anterior(valor_actual)
-    notificar_telegram("Resumen mensual publicado")
+    notificar_telegram(texto)
 
 def postear_ranking_america_tweet(paises_lista: list[dict]) -> str:
-    """Publica en X (Twitter) la tabla comparativa de riesgo país de América."""
+    """Genera la tabla comparativa de América y la envía a Telegram lista para publicar en X."""
     tz = pytz.timezone('America/Argentina/Buenos_Aires')
     fecha_str = datetime.now(tz).strftime('%d/%m/%Y')
 
@@ -292,7 +301,9 @@ def postear_ranking_america_tweet(paises_lista: list[dict]) -> str:
     lineas.append("\n🌐 Seguí el ranking y datos en vivo:\nhttps://riesgopaisar.web.app/\n\n#RiesgoPaís #América")
     tweet_text = "\n".join(lineas)
 
-    client.create_tweet(text=tweet_text)
-    print(f"Tweet de ranking de América enviado:\n{tweet_text}")
+    # Envío a X comentado:
+    # client.create_tweet(text=tweet_text)
+    print(f"Tweet de ranking de América enviado a Telegram:\n{tweet_text}")
+    notificar_telegram(tweet_text)
     return tweet_text
 
